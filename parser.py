@@ -45,9 +45,8 @@ class MyParser:
 	""" A class encapsulating all parsing functionality
 	for a particular grammar. """
 	
-	def create_scanner(self,fp):
-		""" Creates a plex scanner for a particular grammar 
-		to operate on file object fp. """
+	def create_scanner(self,text):
+		""" Creates a plex scanner for a particular grammar """
 
 		# define some pattern constructs
 		letter = plex.Range("AZaz")
@@ -67,7 +66,7 @@ class MyParser:
 			])
 		
 		# create and store the scanner object
-		self.scanner = plex.Scanner(lexicon,fp)
+		self.scanner = plex.Scanner(lexicon,text)
 		
 		# get initial lookahead
 		self.la,self.val = self.next_token()
@@ -96,11 +95,11 @@ class MyParser:
 			raise ParseError("found {} instead of {}".format(self.la,token))
 	
 	
-	def parse(self,fp):
+	def parse(self,text):
 		""" Creates scanner for input file object fp and calls the parse logic code. """
 		
 		# create the plex scanner for fp
-		self.create_scanner(fp)
+		self.create_scanner(text)
 		
 		# call parsing logic
 		self.session()
@@ -148,15 +147,15 @@ class MyParser:
 parser = MyParser()
 
 # open file for parsing
-with open("recursive-descent-parsing.txt","r") as fp:
+text = input('give some input>')
 
-	# parse file
-	try:
-		parser.parse(fp)
-	except plex.errors.PlexError:
-		_,lineno,charno = parser.position()	
-		print("Scanner Error: at line {} char {}".format(lineno,charno+1))
-	except ParseError as perr:
-		_,lineno,charno = parser.position()	
-		print("Parser Error: {} at line {} char {}".format(perr,lineno,charno+1))
+# parse file
+try:
+	parser.parse(text)
+except plex.errors.PlexError:
+	_,lineno,charno = parser.position()	
+	print("Scanner Error: at line {} char {}".format(lineno,charno+1))
+except ParseError as perr:
+	_,lineno,charno = parser.position()	
+	print("Parser Error: {} at line {} char {}".format(perr,lineno,charno+1))
 
