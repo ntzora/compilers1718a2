@@ -2,30 +2,18 @@
 # -*- coding: utf_8 -*-
 
 """
-Example of recursive descent parser written by hand using plex module as scanner
-NOTE: This progam is a language recognizer only.
-
+Original code: https://gist.github.com/mixstef/946fce67f49f147991719bfa4d0101fa
 Sample grammar from p.242 of:
 Grune, Dick, Jacobs, Ceriel J.H., "Parsing Techniques, A Practical Guide" 2nd ed.,Springer 2008.
 
-Session  -> Facts Question | ( Session ) Session
-Facts    -> Fact Facts | ε
-Fact     -> ! string
-Question -> ? string
-
 FIRST sets
 ----------
-Session:  ( ? !
-Facts:    ε !
-Fact:     !
-Question: ?
+See report
 
 FOLLOW sets
 -----------
-Session:  # )
-Facts:    ?
-Fact:     ! ?
-Question: # )
+
+See report
   
 
 """
@@ -33,13 +21,9 @@ Question: # )
 
 import plex
 
-
-
 class ParseError(Exception):
 	""" A user defined exception class, to describe parse errors. """
 	pass
-
-
 
 class MyParser:
 	""" A class encapsulating all parsing functionality
@@ -50,21 +34,28 @@ class MyParser:
 
 		# define some pattern constructs
 		letter = plex.Range("AZaz")
-		boolean = plex.Str("true","false","t","f", "0", "1")
+		boolean = plex.NoCase(plex.Str("true","false","t","f", "0", "1"))
 		andoroperators = plex.Str("and", "or")
 		notoperator = plex.Str("not")
+		equal = plex.Str("=")
 
-		string = plex.Rep1(letter)
-		operator = plex.Any("!?()")		
-		space = plex.Any(" \t\n")
+		v = plex.Rep1(letter)
+		parenthesis = plex.Str("(",")")
+		output = plex.Str("print")		
+		spaces = plex.Any(" \t\n")
 
 		# the scanner lexicon - constructor argument is a list of (pattern,action ) tuples
 		lexicon = plex.Lexicon([
-			(letter,plex.TEXT),
-			(space,plex.IGNORE),
-			(string, 'string')
+			(andoroperators,'AND/OR'),
+			(notoperator,'NOT'),
+			(boolean,'BOOLEAN'),
+			(equal,'='),
+			(parenthesis,plex.TEXT),
+			(output,'PRINT'),
+			(spaces,plex.IGNORE),
+			(v, 'VARIABLE') #v for variable to match grammar rules given in report
 			])
-		
+			
 		# create and store the scanner object
 		self.scanner = plex.Scanner(lexicon,text)
 		
@@ -98,64 +89,138 @@ class MyParser:
 	def parse(self,text):
 		""" Creates scanner for input file object fp and calls the parse logic code. """
 		
-		# create the plex scanner for fp
+		# create the plex scanner for the input
 		self.create_scanner(text)
 		
 		# call parsing logic
-		self.session()
-	
-			
-	def session(self):
-		""" Session  -> Facts Question | ( Session ) Session """
-		
-		if self.la=='A' or self.la=='not':
-			self.facts()
-			self.question()
-		elif self.la=='(':
-			self.match('(')
-			self.session()
-			self.match(')')
-			self.session()	
-		else:
-			raise ParseError("in session: Not operator, A or ( expected")
-			 	
-	
-	def facts(self):
-		""" Facts -> Fact Facts | ε """
-		
-		if self.la=='A':
-			self.fact()
-			self.facts()
-		elif self.la=='not':	# from FOLLOW set!
+		self.stmt_list()
+
+# The grammar rules
+
+	def stmt_list(self):
+		if self.la=='VARIABLE' or self.la=='PRINT':
+			self.stmt()
+			self.stmt_list()
+		elif self.la is None: # This is epsilon in our grammar
 			return
 		else:
-			raise ParseError("in facts: A or not expected")
-	
-	
-	def fact(self):
-		""" Fact -> not string """
-		
-		if self.la=='not':
-			self.match('not')
-			self.match('string')
+			raise ParseError("in stmt_list: VARIABLE or PRINT expected")
+
+	def stmt(self):
+		if self.la=='VARIABLE':
+			self.match('VARIABLE')
+			self.match('=')
+			self.expr()
+		elif self.la=='PRINT':
+			self.match('PRINT')
+			self.expr()
 		else:
-			raise ParseError("in fact: not expected")
+			raise ParseError("in stmt: VARIABLE or = or PRINT expected")
+
+
+	def expr(self):
+		if self.la=='(' or self.la=='VARIABLE' or self.la=='BOOLEAN' or self.la=='NOT':
+			self.term()
+			self.term_tail()
+		else:
+			raise ParseError("in expr: ( or VARIABLE or BOOLEAN expected ")
+
+	def term_tail(self):
+		if self.la=='AND/OR':
+			self.andoroperators()
+			self.term()
+			self.term_tail()
+		elif self.la==')' or self.la=='VARIABLE' or self.la=='PRINT':
+			return
+		elif self.la is None:
+			return	
+		else:
+			raise ParseError("in term_tail: AND/OR expected")
+
+	def term(self):
+		if self.la=='(' or self.la=='VARIABLE' or self.la=='BOOLEAN':
+			self.factor()
+			self.factor_tail()
+		else:
+			raise ParseError("in term: ( or VARIABLE or BOOLEAN expected")
+
+	def factor_tail(self):
+		if self.la=='AND/OR':
+			self.andoroperators()
+			self.factor()
+			self.factor_tail()
+		elif self.la==')' or self.la=='AND/OR' or self.la=='VARIABLE' or self.la=='PRINT':
+			return
+		elif self.la is None:
+			return
+		else:
+			raise ParseError("in factor_tail: NOT expected")
+
+	def factor(self):
+
+		if self.la=='(':
+			token, text = self.la, self.val
+			print(token, text)
+			self.match('(')
+			self.expr()
+			token, text = self.la, self.val
+			print(token, text)
+			self.match(')')
+		elif self.la=='VARIABLE':
+			token, text = self.la, self.val
+			print(token, text)
+			self.match('VARIABLE')
+			
+		elif self.la=='BOOLEAN':
+			token, text = self.la, self.val
+			print(token, text)
+			self.match('BOOLEAN')
+
+
+		else:
+			raise ParseError ('in factor: ( or VARIABLE or BOOLEAN expected')
+			
+			
+	def andoroperators(self):
+		if self.la=='AND/OR':
+			self.match('AND/OR')
+			# return('and/or')
+		else:
+			raise ParseError("in andoroperators: or expected")
+
+	def notoperator(self):
+			if self.la=='NOT':
+				self.match('NOT')
+				# return('not')
+			elif self.la==')' or self.la=='VARIABLE' or self.la=='BOOLEAN': #From follow set
+				return
+			elif self.la is None:
+				return
+			else:
+				raise ParseError("in notoperator : not expected")
+			
+	def boolean(self):
+		if self.la=='BOOLEAN':
+			self.match('BOOLEAN')
+		else:
+			raise ParseError("in boolean: BOOLEAN expected")
 		
-# the main part of prog
+# the main part of the programm
 
 # create the parser object
 parser = MyParser()
 
-# open file for parsing
-text = input('give some input>')
+# enter input for parsing
+#text = input('give some input>')
+with open("input.txt","r") as text:
 
-# parse file
-try:
-	parser.parse(text)
-except plex.errors.PlexError:
-	_,lineno,charno = parser.position()	
-	print("Scanner Error: at line {} char {}".format(lineno,charno+1))
-except ParseError as perr:
-	_,lineno,charno = parser.position()	
-	print("Parser Error: {} at line {} char {}".format(perr,lineno,charno+1))
+# parse text
+	try:
+		parser.parse(text)
+	except plex.errors.PlexError:
+		_,lineno,charno = parser.position()	
+		print("Scanner Error: at line {} char {}".format(lineno,charno+1))
+	except ParseError as perr:
+		_,lineno,charno = parser.position()	
+		print("Parser Error: {} at line {} char {}".format(perr,lineno,charno+1))
 
