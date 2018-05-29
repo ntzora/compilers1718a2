@@ -108,10 +108,15 @@ class MyParser:
 
 	def stmt(self):
 		if self.la=='VARIABLE':
-			self.match('VARIABLE')
+			token, text = self.la, self.val #before matching, to print the first token and then move to the next token
+			print(token, text)
+			token, text = self.la, self.val
+			print(token, text)
 			self.match('=')
 			self.expr()
 		elif self.la=='PRINT':
+			token, text = self.la, self.val
+			print(token, text)		
 			self.match('PRINT')
 			self.expr()
 		else:
@@ -123,7 +128,7 @@ class MyParser:
 			self.term()
 			self.term_tail()
 		else:
-			raise ParseError("in expr: ( or VARIABLE or BOOLEAN expected ")
+			raise ParseError("in expr: ( or VARIABLE or BOOLEAN or NOT expected ")
 
 	def term_tail(self):
 		if self.la=='AND/OR':
