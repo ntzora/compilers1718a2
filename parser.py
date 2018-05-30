@@ -81,6 +81,8 @@ class MyParser:
 		""" Consumes (matches with current lookahead) an expected token.
 		Raises ParseError if anything else is found. Acquires new lookahead. """ 
 		
+		print("Boolean validation")
+		
 		if self.la==token:
 			self.la,self.val = self.next_token()
 		else:
