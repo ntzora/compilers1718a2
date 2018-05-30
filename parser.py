@@ -144,73 +144,60 @@ class MyParser:
 
 	# Term -> Factor Factor_tail
 	def term(self):
-		if self.la=='(' or self.la=='VARIABLE' or self.la=='BOOLEAN':
+		if self.la=='(' or self.la=='VARIABLE' or self.la=='BOOLEAN' or self.la=='NOT':
 			self.factor()
 			self.factor_tail()
 		else:
-			raise ParseError("in term: ( or VARIABLE or BOOLEAN expected")
+			raise ParseError("in term: ( or VARIABLE or BOOLEAN or NOT expected")
 
+	# Factor_tail -> Notop Factor Factor_tail | ε
 	def factor_tail(self):
-		if self.la=='AND/OR':
-			self.andoroperators()
+		if self.la=='NOT':
+			self.notoperator()
 			self.factor()
 			self.factor_tail()
-		elif self.la==')' or self.la=='AND/OR' or self.la=='VARIABLE' or self.la=='PRINT':
+		elif self.la=='AND/OR' or self.la=='VARIABLE' or self.la=='PRINT':
 			return
 		elif self.la is None:
 			return
 		else:
 			raise ParseError("in factor_tail: NOT expected")
 
+	# Factor -> (Expr) | V | Boolean | ε
 	def factor(self):
-
 		if self.la=='(':
-			token, text = self.la, self.val
-			print(token, text)
 			self.match('(')
 			self.expr()
-			token, text = self.la, self.val
-			print(token, text)
 			self.match(')')
 		elif self.la=='VARIABLE':
-			token, text = self.la, self.val
-			print(token, text)
 			self.match('VARIABLE')
-			
 		elif self.la=='BOOLEAN':
-			token, text = self.la, self.val
-			print(token, text)
 			self.match('BOOLEAN')
-
-
 		else:
 			raise ParseError ('in factor: ( or VARIABLE or BOOLEAN expected')
 			
-			
-	def andoroperators(self):
-		if self.la=='AND/OR':
-			self.match('AND/OR')
-			# return('and/or')
-		else:
-			raise ParseError("in andoroperators: or expected")
-
+	# Notop	 -> not 
 	def notoperator(self):
 			if self.la=='NOT':
 				self.match('NOT')
-				# return('not')
-			elif self.la==')' or self.la=='VARIABLE' or self.la=='BOOLEAN': #From follow set
-				return
-			elif self.la is None:
-				return
 			else:
 				raise ParseError("in notoperator : not expected")
+
+
+	# AndOrop -> and | or
+	def andoroperators(self):
+		if self.la=='AND/OR':
+			self.match('AND/OR')
+		else:
+			raise ParseError("in andoroperators: and/or expected")
 			
+	# Boolean -> true|false|t|f|0|1
 	def boolean(self):
 		if self.la=='BOOLEAN':
 			self.match('BOOLEAN')
 		else:
 			raise ParseError("in boolean: BOOLEAN expected")
-		
+
 # the main part of the programm
 
 # create the parser object
@@ -229,4 +216,3 @@ with open("input.txt","r") as text:
 	except ParseError as perr:
 		_,lineno,charno = parser.position()	
 		print("Parser Error: {} at line {} char {}".format(perr,lineno,charno+1))
-
