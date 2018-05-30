@@ -34,12 +34,13 @@ class MyParser:
 
 		# define some pattern constructs
 		letter = plex.Range("AZaz")
+		digit = plex.Range("09")
 		boolean = plex.NoCase(plex.Str("true","false","t","f", "0", "1"))
 		andoroperators = plex.Str("and", "or")
 		notoperator = plex.Str("not")
 		equal = plex.Str("=")
 
-		v = plex.Rep1(letter)
+		v = letter + plex.Rep(letter|digit)
 		parenthesis = plex.Str("(",")")
 		output = plex.Str("print")		
 		spaces = plex.Any(" \t\n")
