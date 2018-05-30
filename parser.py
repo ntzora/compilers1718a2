@@ -98,6 +98,7 @@ class MyParser:
 
 # The grammar rules
 
+	# Stmt_list -> Stmt Stmt_list | ε
 	def stmt_list(self):
 		if self.la=='VARIABLE' or self.la=='PRINT':
 			self.stmt()
@@ -107,42 +108,41 @@ class MyParser:
 		else:
 			raise ParseError("in stmt_list: VARIABLE or PRINT expected")
 
+	# Stmt -> V = Expr | print Expr
 	def stmt(self):
 		if self.la=='VARIABLE':
-			token, text = self.la, self.val #before matching, to print the first token and then move to the next token
-			print(token, text)
-			token, text = self.la, self.val
-			print(token, text)
+			self.match('VARIABLE')
 			self.match('=')
 			self.expr()
 		elif self.la=='PRINT':
-			token, text = self.la, self.val
-			print(token, text)		
 			self.match('PRINT')
 			self.expr()
 		else:
-			raise ParseError("in stmt: VARIABLE or = or PRINT expected")
+			raise ParseError("in stmt: VARIABLE or PRINT expected")
 
 
+	# Expr -> Term Term_tail
 	def expr(self):
-		if self.la=='(' or self.la=='VARIABLE' or self.la=='BOOLEAN' or self.la=='NOT':
+		if self.la=='(' or self.la=='VARIABLE' or self.la=='BOOLEAN':
 			self.term()
 			self.term_tail()
 		else:
-			raise ParseError("in expr: ( or VARIABLE or BOOLEAN or NOT expected ")
+			raise ParseError("in expr: ( or VARIABLE or BOOLEAN expected ")
 
+	# Term_tail -> AndOrop Term Term_tail | ε
 	def term_tail(self):
 		if self.la=='AND/OR':
 			self.andoroperators()
 			self.term()
 			self.term_tail()
-		elif self.la==')' or self.la=='VARIABLE' or self.la=='PRINT':
+		elif self.la=='VARIABLE' or self.la=='PRINT':
 			return
 		elif self.la is None:
 			return	
 		else:
 			raise ParseError("in term_tail: AND/OR expected")
 
+	# Term -> Factor Factor_tail
 	def term(self):
 		if self.la=='(' or self.la=='VARIABLE' or self.la=='BOOLEAN':
 			self.factor()
